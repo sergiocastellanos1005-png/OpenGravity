@@ -4,6 +4,7 @@ import { processUserMessage } from '../agent/loop.js';
 import { transcribeAudio } from '../tools/transcribe.js';
 import { textToSpeech } from '../tools/tts.js';
 import { unlinkSync } from 'fs';
+import { memory } from '../agent/memory.js';
 
 export const bot = new Bot(env.TELEGRAM_BOT_TOKEN);
 
@@ -65,9 +66,7 @@ bot.command('start', (ctx) => {
 bot.command('clear', async (ctx) => {
     const userId = ctx.from?.id;
     if (userId) {
-        import('../agent/memory.js').then(({ memory }) => {
-            memory.clearHistory(userId);
-        });
+        memory.clearHistory(userId);
         await ctx.reply("🧹 Memoria borrada. ¡Empecemos de cero!");
     }
 });
