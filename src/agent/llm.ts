@@ -8,6 +8,10 @@ const groq = new Groq({ apiKey: env.GROQ_API_KEY });
 const openRouter = env.OPENROUTER_API_KEY ? new OpenAI({
     baseURL: "https://openrouter.ai/api/v1",
     apiKey: env.OPENROUTER_API_KEY,
+    defaultHeaders: {
+        "HTTP-Referer": "https://opengravity.io", // Requerido por algunos modelos de OpenRouter
+        "X-Title": "OpenGravity Bot",
+    }
 }) : null;
 
 export async function chatCompletion(messages: any[]) {
@@ -17,16 +21,21 @@ export async function chatCompletion(messages: any[]) {
         "llama-3.1-8b-instant"
     ];
 
+    // Lista ampliada de rescate: Probamos modelos gratis y muy baratos de OpenRouter
     const fallbackModels = [
         env.OPENROUTER_MODEL, 
         "google/gemini-2.0-flash-lite-preview-02-05:free", 
         "meta-llama/llama-3.3-70b-instruct:free",
-    ];
+        "mistralai/mistral-7b-instruct:free",
+        "google/gemini-2.0-pro-exp-02-05:free",
+        "deepseek/deepseek-chat" // Muy barato si los gratis fallan
+    ].filter(Boolean);
 
-    // --- Intento con Groq ---
+    // --- FASE 1: INTENTAR CON GROQ ---
+    console.log("--- Iniciando ciclo de IA ---");
     for (const model of groqModels) {
         try {
-            console.log(`🚀 Intentando Groq con: ${model}`);
+            console.log(`🚀 Intentando Groq (${model})...`);
             const response = await groq.chat.completions.create({
                 model: model,
                 // @ts-ignore
@@ -34,41 +43,48 @@ export async function chatCompletion(messages: any[]) {
                 tools: tools as any,
                 tool_choice: "auto",
             });
-            if (response.choices[0]) return response.choices[0].message;
+            if (response.choices && response.choices[0]) {
+                console.log(`✅ Éxito con Groq (${model})`);
+                return response.choices[0].message;
+            }
         } catch (error: any) {
             const isRateLimit = error.status === 429 || error.message?.includes("429");
             if (isRateLimit) {
-                console.warn(`⚠️ Groq Rate Limit (429) en ${model}.`);
-                break; // Si es rate limit, saltamos directamente al rescate sin probar otros de Groq
+                console.warn(`⚠️ Groq Rate Limit en ${model}. Saltando al rescate inmediatamente.`);
+                break; // No perdemos tiempo con otros modelos de Groq si hay rate limit global
             }
-            console.warn(`⚠️ Groq ${model} falló: ${error.message}. Probando siguiente de Groq...`);
+            console.warn(`⚠️ Groq ${model} falló: ${error.message}`);
         }
     }
 
-    // --- Rescate con OpenRouter (como Gemini) ---
-    console.error(`❌ Groq no disponible. Entrando a modo Rescate...`);
-    
+    // --- FASE 2: RESCATE TOTAL CON OPENROUTER ---
     if (openRouter) {
+        console.error(`❌ Groq falló o está saturado. Iniciando cascada de rescate en OpenRouter...`);
         for (const modelId of fallbackModels) {
-            if (!modelId) continue;
             try {
-                console.log(`🔄 Probando Rescate con: ${modelId}`);
+                console.log(`🔄 Probando motor de reserva: ${modelId}...`);
                 const fallbackResponse = await openRouter.chat.completions.create({
                     model: modelId,
                     // @ts-ignore
                     messages: messages,
                     tools: tools as any
                 });
-                if (fallbackResponse.choices[0]) return fallbackResponse.choices[0].message;
+                if (fallbackResponse.choices && fallbackResponse.choices[0]) {
+                    console.log(`✅ Rescate exitoso con: ${modelId}`);
+                    return fallbackResponse.choices[0].message;
+                }
             } catch (fallbackError: any) {
-                console.error(`❌ Falló rescate ${modelId}: ${fallbackError.message}`);
+                console.error(`❌ El motor ${modelId} también falló: ${fallbackError.message}`);
+                // Seguimos al siguiente en la lista sin detenernos
             }
         }
+    } else {
+        console.error("⚠️ No hay motor de rescate (OpenRouter) configurado en las variables de entorno.");
     }
 
-    // --- Fallo total ---
+    // --- FASE 3: MENSAJE DE ÚLTIMO RECURSO ---
     return { 
         role: 'assistant', 
-        content: "Lo siento, todos mis motores de inteligencia están saturados ahora mismo por el límite de uso gratuito. Por favor, espera un minuto e intenta de nuevo." 
+        content: "Lo siento mucho. Todos mis cerebros (Groq y Gemini/OpenRouter) han alcanzado su límite de uso gratuito por este minuto. Por favor, **espera exactamente 60 segundos** e intenta de nuevo. Si esto pasa mucho, revisa tu configuración de OpenRouter." 
     };
 }
