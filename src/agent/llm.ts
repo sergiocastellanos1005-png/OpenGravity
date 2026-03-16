@@ -2,7 +2,7 @@ import Groq from 'groq-sdk';
 import { env } from '../config/env.js';
 import { tools } from '../tools/index.js';
 import { Message } from './memory.js';
-import OpenAI from 'openai'; // OpenRouter usa la compatibilidad con OpenAI API
+import OpenAI from 'openai';
 
 const groq = new Groq({ apiKey: env.GROQ_API_KEY });
 const openRouter = env.OPENROUTER_API_KEY ? new OpenAI({
@@ -11,24 +11,11 @@ const openRouter = env.OPENROUTER_API_KEY ? new OpenAI({
 }) : null;
 
 export async function chatCompletion(messages: any[]) {
-    const maxRetries = 2;
-    let attempt = 0;
-
     const groqModels = [
         "llama-3.3-70b-versatile",
         "mixtral-8x7b-32768",
         "llama-3.1-8b-instant"
     ];
-
-    const runWithGroq = async (model: string) => {
-        return await groq.chat.completions.create({
-            model: model,
-            // @ts-ignore
-            messages: messages,
-            tools: tools as any,
-            tool_choice: "auto",
-        });
-    };
 
     const fallbackModels = [
         env.OPENROUTER_MODEL, 
@@ -36,66 +23,52 @@ export async function chatCompletion(messages: any[]) {
         "meta-llama/llama-3.3-70b-instruct:free",
     ];
 
-    const runWithOpenRouter = async (modelId: string) => {
-        if (!openRouter) throw new Error("OpenRouter no está configurado.");
-        console.log(`🔄 Probando OpenRouter con modelo: ${modelId}`);
-        return await openRouter.chat.completions.create({
-            model: modelId,
-            // @ts-ignore
-            messages: messages,
-            tools: tools as any
-        });
-    };
-
-    while (attempt <= maxRetries) {
+    // --- Intento con Groq ---
+    for (const model of groqModels) {
         try {
-            // Intentar con los modelos de Groq primero
-            for (const model of groqModels) {
-                try {
-                    const response = await runWithGroq(model);
-                    return response.choices[0].message;
-                } catch (e: any) {
-                    if (e.status === 429) throw e; // Si es rate limit, salir al catch principal para esperar
-                    console.warn(`⚠️ Groq ${model} falló, probando siguiente...`);
-                }
-            }
-            throw new Error("Todos los modelos de Groq fallaron.");
-
+            console.log(`🚀 Intentando Groq con: ${model}`);
+            const response = await groq.chat.completions.create({
+                model: model,
+                // @ts-ignore
+                messages: messages,
+                tools: tools as any,
+                tool_choice: "auto",
+            });
+            if (response.choices[0]) return response.choices[0].message;
         } catch (error: any) {
-            attempt++;
-            const isRateLimit = error.status === 429 || (error.error && error.error.code === 429) || (error.message && error.message.includes("429"));
-            
-            if (isRateLimit && attempt <= maxRetries) {
-                const waitTime = 5000 * attempt;
-                console.warn(`⚠️ Límite de Groq (429). Esperando ${waitTime/1000}s...`);
-                await new Promise(r => setTimeout(r, waitTime));
-                continue;
+            const isRateLimit = error.status === 429 || error.message?.includes("429");
+            if (isRateLimit) {
+                console.warn(`⚠️ Groq Rate Limit (429) en ${model}.`);
+                break; // Si es rate limit, saltamos directamente al rescate sin probar otros de Groq
             }
+            console.warn(`⚠️ Groq ${model} falló: ${error.message}. Probando siguiente de Groq...`);
+        }
+    }
 
-            console.error(`❌ Falló Groq completamente. Entrando a Rescate (OpenRouter)...`);
-            
-            if (openRouter) {
-                for (const model of fallbackModels) {
-                    if (!model) continue;
-                    try {
-                        const fallbackResponse = await runWithOpenRouter(model);
-                        if (fallbackResponse && fallbackResponse.choices[0]) {
-                            return fallbackResponse.choices[0].message;
-                        }
-                    } catch (fallbackError: any) {
-                        console.error(`❌ Falló modelo ${model}: ${fallbackError.message}`);
-                    }
-                }
-            }
-            
-            if (attempt > maxRetries) {
-                return { 
-                    role: 'assistant', 
-                    content: "Lo siento, mis procesadores están saturados por el límite de peticiones gratuitas. Por favor, espera un minuto e intenta de nuevo." 
-                };
+    // --- Rescate con OpenRouter (como Gemini) ---
+    console.error(`❌ Groq no disponible. Entrando a modo Rescate...`);
+    
+    if (openRouter) {
+        for (const modelId of fallbackModels) {
+            if (!modelId) continue;
+            try {
+                console.log(`🔄 Probando Rescate con: ${modelId}`);
+                const fallbackResponse = await openRouter.chat.completions.create({
+                    model: modelId,
+                    // @ts-ignore
+                    messages: messages,
+                    tools: tools as any
+                });
+                if (fallbackResponse.choices[0]) return fallbackResponse.choices[0].message;
+            } catch (fallbackError: any) {
+                console.error(`❌ Falló rescate ${modelId}: ${fallbackError.message}`);
             }
         }
     }
-    
-    throw new Error("Se superó el límite de reintentos con la API de IA.");
+
+    // --- Fallo total ---
+    return { 
+        role: 'assistant', 
+        content: "Lo siento, todos mis motores de inteligencia están saturados ahora mismo por el límite de uso gratuito. Por favor, espera un minuto e intenta de nuevo." 
+    };
 }
