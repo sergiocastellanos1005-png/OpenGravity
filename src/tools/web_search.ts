@@ -1,16 +1,17 @@
-import { search } from 'googlethis';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
 
 export const webSearchTool = {
     type: 'function',
     function: {
         name: 'web_search',
-        description: 'Realiza una búsqueda en internet en tiempo real para obtener información actualizada, responder preguntas sobre eventos recientes, o buscar cualquier dato en Google.',
+        description: 'Realiza una búsqueda web para obtener información real y actualizada sobre cualquier tema, especialmente sobre eventos recientes o dinero/divisas.',
         parameters: {
             type: 'object',
             properties: {
                 query: {
                     type: 'string',
-                    description: 'La consulta exacta para buscar en Google.'
+                    description: 'La consulta exacta para buscar en internet.'
                 }
             },
             required: ['query'],
@@ -20,43 +21,45 @@ export const webSearchTool = {
 };
 
 export async function handleWebSearch(query: string) {
-    console.log(`Buscando en Google: ${query}`);
+    console.log(`Buscando en la web: ${query}`);
     try {
-        const options = {
-            page: 0, 
-            safe: false, // Safe Search
-            parse_ads: false, // If set to true sponsored results will be parsed
-            additional_params: { 
-                // add additional parameters here, see https://moz.com/blog/the-ultimate-guide-to-the-google-search-parameters and https://www.seobythesea.com/2006/01/google-search-url-parameters-query-string-anatomy/
-                hl: 'es' 
+        const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+        const { data } = await axios.get(url, { 
+            headers: { 
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
+                'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8'
+            } 
+        });
+        
+        const $ = cheerio.load(data);
+        const searchResults: any[] = [];
+        
+        $('.result__body').each((i, el) => {
+            const title = $(el).find('.result__title').text().trim();
+            const snippet = $(el).find('.result__snippet').text().trim();
+            if (title && snippet) {
+                searchResults.push({ title, snippet });
             }
-        };
+        });
         
-        const response = await search(query, options);
-        
+        if (searchResults.length === 0) {
+            return "No se encontraron resultados relevantes en la web. NO VUELVAS A INTENTAR HACER OTRA BÚSQUEDA IGUAL. Informa directamente al usuario de que no tienes esta información.";
+        }
+
         let results = "Resultados de la búsqueda web:\n\n";
-
-        if (response.knowledge_panel && response.knowledge_panel.description) {
-            results += `[Panel de Conocimiento Destacado]:\n${response.knowledge_panel.title}: ${response.knowledge_panel.description}\n\n`;
-        }
-        
-        if (response.results.length === 0) {
-            return "No se encontraron resultados relevantes.";
-        }
-
-        const topResults = response.results.slice(0, 5); // Tomamos los 5 primeros resultados
+        const topResults = searchResults.slice(0, 5); // Tomamos los 5 primeros
         
         topResults.forEach((result: any, i: number) => {
             results += `[Resultado ${i + 1}]:\n`;
             results += `Título: ${result.title}\n`;
-            results += `Descripción: ${result.description}\n`;
+            results += `Descripción: ${result.snippet}\n`;
             results += `----\n`;
         });
         
         return results;
 
     } catch (error: any) {
-        console.error("Error buscando en Google:", error);
-        return `Error al realizar la búsqueda: ${error.message}`;
+        console.error("Error buscando en la web:", error);
+        return `Error al realizar la búsqueda: ${error.message}. NO VUELVAS A INTENTAR HACER OTRA BÚSQUEDA. Dile al usuario que ha ocurrido un error de conexión al buscar.`;
     }
 }
