@@ -1,25 +1,25 @@
 import { initializeApp, cert, type ServiceAccount } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
-import { readFileSync } from 'fs';
-import { env } from './env.js';
+import { readFileSync, existsSync } from 'fs';
 
-// Cargar credenciales desde el archivo service-account.json
 const serviceAccountPath = process.env.GOOGLE_APPLICATION_CREDENTIALS || './service-account.json';
 
-let serviceAccount: ServiceAccount;
-try {
-    const raw = readFileSync(serviceAccountPath, 'utf-8');
-    serviceAccount = JSON.parse(raw) as ServiceAccount;
-} catch (error) {
-    console.error(`❌ No se pudo leer el archivo de credenciales de Firebase en: ${serviceAccountPath}`);
-    console.error('   Asegúrate de descargar la clave privada desde la consola de Firebase.');
-    process.exit(1);
+export let firestore: any = null;
+
+if (existsSync(serviceAccountPath)) {
+    try {
+        const raw = readFileSync(serviceAccountPath, 'utf-8');
+        const serviceAccount = JSON.parse(raw) as ServiceAccount;
+        
+        const app = initializeApp({
+            credential: cert(serviceAccount),
+        });
+        
+        firestore = getFirestore(app);
+        console.log('🔥 Firebase inicializado correctamente.');
+    } catch (error) {
+        console.error(`⚠️ No se pudo cargar Firebase, operando solo en modo local (SQLite).`);
+    }
+} else {
+    console.warn('⚠️ Archivo de credenciales de Google no encontrado. Firebase desactivado, usando solo memoria local.');
 }
-
-const app = initializeApp({
-    credential: cert(serviceAccount),
-});
-
-export const firestore = getFirestore(app);
-
-console.log('🔥 Firebase inicializado correctamente.');

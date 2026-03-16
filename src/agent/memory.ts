@@ -27,6 +27,8 @@ export interface Message {
 const CONVERSATIONS_COLLECTION = 'conversations';
 
 async function syncToFirestore(userId: number, role: Message['role'], content: string) {
+    if (!firestore) return; // Si firestore es null, no hacemos nada y la app no se crashea
+    
     try {
         const docRef = firestore
             .collection(CONVERSATIONS_COLLECTION)
@@ -67,17 +69,19 @@ export const memory = {
         const stmt = db.prepare('DELETE FROM messages WHERE user_id = ?');
         stmt.run(userId);
 
-        // También limpiar en Firestore
-        firestore
-            .collection(CONVERSATIONS_COLLECTION)
-            .doc(String(userId))
-            .collection('messages')
-            .get()
-            .then(snapshot => {
-                const batch = firestore.batch();
-                snapshot.docs.forEach(doc => batch.delete(doc.ref));
-                return batch.commit();
-            })
-            .catch(err => console.error('⚠️  Error limpiando Firestore:', err));
+        // También limpiar en Firestore si la nube está encendida
+        if (firestore) {
+            firestore
+                .collection(CONVERSATIONS_COLLECTION)
+                .doc(String(userId))
+                .collection('messages')
+                .get()
+                .then((snapshot: any) => {
+                    const batch = firestore.batch();
+                    snapshot.docs.forEach((doc: any) => batch.delete(doc.ref));
+                    return batch.commit();
+                })
+                .catch((err: any) => console.error('⚠️ Error limpiando Firestore:', err));
+        }
     }
 };
