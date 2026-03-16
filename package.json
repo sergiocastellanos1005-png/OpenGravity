@@ -23,6 +23,7 @@
     "firebase": "^12.10.0",
     "firebase-admin": "^13.7.0",
     "google-tts-api": "^2.0.2",
+    "googlethis": "^1.8.0",
     "grammy": "^1.41.1",
     "groq-sdk": "^0.37.0",
     "node-fetch": "^3.3.2",
