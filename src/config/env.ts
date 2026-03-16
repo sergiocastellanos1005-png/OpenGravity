@@ -15,7 +15,7 @@ export const env = {
     TELEGRAM_ALLOWED_USER_IDS: getEnv('TELEGRAM_ALLOWED_USER_IDS').split(',').map(id => parseInt(id.trim(), 10)),
     GROQ_API_KEY: getEnv('GROQ_API_KEY'),
     OPENROUTER_API_KEY: getEnv('OPENROUTER_API_KEY', false),
-    OPENROUTER_MODEL: getEnv('OPENROUTER_MODEL', false) || 'google/gemini-2.5-flash:free',
+    OPENROUTER_MODEL: getEnv('OPENROUTER_MODEL', false) || 'google/gemini-2.0-flash-lite-preview-02-05:free',
     DB_PATH: getEnv('DB_PATH', false) || './memory.db',
     ELEVENLABS_API_KEY: getEnv('ELEVENLABS_API_KEY', false),
 };
