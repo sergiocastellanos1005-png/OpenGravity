@@ -3,7 +3,7 @@ import { chatCompletion } from './llm.js';
 import { executeTool } from '../tools/index.js';
 import { SYSTEM_PROMPT } from './system.js';
 
-const MAX_ITERATIONS = 15;
+const MAX_ITERATIONS = 30;
 
 function parseMessageForLLM(msg: Message) {
     if (msg.role === 'assistant' || msg.role === 'tool') {
