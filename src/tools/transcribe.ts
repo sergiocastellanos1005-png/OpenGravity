@@ -24,33 +24,44 @@ async function downloadFile(url: string, filePath: string): Promise<void> {
  */
 export async function transcribeAudio(fileUrl: string): Promise<string> {
     const tempPath = join(tmpdir(), `og_audio_${Date.now()}.ogg`);
+    let attempt = 0;
+    const maxRetries = 3;
 
     try {
-        // 1. Descargar el audio a un archivo temporal
         await downloadFile(fileUrl, tempPath);
-
-        // 2. Enviar a Groq Whisper para transcripción
         const { readFileSync } = await import('fs');
         const fileBuffer = readFileSync(tempPath);
 
-        const transcription = await groq.audio.transcriptions.create({
-            file: new File([fileBuffer], 'audio.ogg', { type: 'audio/ogg' }),
-            model: 'whisper-large-v3',
-            language: 'es', // Priorizar español
-            response_format: 'text',
-        });
+        while (attempt < maxRetries) {
+            try {
+                const transcription = await groq.audio.transcriptions.create({
+                    file: new File([fileBuffer], 'audio.ogg', { type: 'audio/ogg' }),
+                    model: 'whisper-large-v3',
+                    language: 'es',
+                    response_format: 'text',
+                });
 
-        const text = typeof transcription === 'string' 
-            ? transcription 
-            : (transcription as any).text || '';
+                const text = typeof transcription === 'string' 
+                    ? transcription 
+                    : (transcription as any).text || '';
 
-        if (!text || text.trim().length === 0) {
-            return '[No se pudo transcribir el audio — estaba vacío o no se entendió.]';
+                if (!text || text.trim().length === 0) {
+                    return '[Audio vacío o no se entendió]';
+                }
+
+                return text.trim();
+            } catch (error: any) {
+                attempt++;
+                if (error.status === 429 && attempt < maxRetries) {
+                    console.warn(`🎙️ Límite de transcripción (Groq). Reintentando en ${attempt * 3}s...`);
+                    await new Promise(r => setTimeout(r, attempt * 3000));
+                    continue;
+                }
+                throw error;
+            }
         }
-
-        return text.trim();
+        throw new Error("Se agotaron los reintentos de transcripción.");
     } finally {
-        // 3. Limpiar archivo temporal
         try { unlinkSync(tempPath); } catch {}
     }
 }

@@ -50,27 +50,33 @@ export async function chatCompletion(messages: any[]) {
             const isRateLimit = error.status === 429 || (error.error && error.error.code === 429) || (error.message && error.message.includes("429"));
             
             if (isRateLimit && attempt <= maxRetries) {
-                console.warn(`⚠️ Limite de Groq alcanzado (Intento ${attempt}/${maxRetries}). Esperando...`);
-                await new Promise(r => setTimeout(r, 2000 * attempt));
+                const waitTime = 4000 * attempt;
+                console.warn(`⚠️ Límite de Groq (429). Esperando ${waitTime/1000}s...`);
+                await new Promise(r => setTimeout(r, waitTime));
                 continue;
             }
 
-            console.error(`❌ Error con Groq: ${error.message}. Probando fallback en OpenRouter...`);
+            console.error(`❌ Error Groq: ${error.message}. Entrando a Rescate (OpenRouter)...`);
             
             if (openRouter) {
                 for (const model of fallbackModels) {
+                    if (!model) continue;
                     try {
                         const fallbackResponse = await runWithOpenRouter(model);
-                        return fallbackResponse.choices[0].message;
+                        if (fallbackResponse && fallbackResponse.choices[0]) {
+                            return fallbackResponse.choices[0].message;
+                        }
                     } catch (fallbackError: any) {
-                        console.error(`❌ Falló modelo ${model} en OpenRouter: ${fallbackError.message}`);
-                        // Si falla, intentamos el siguiente en la lista
+                        console.error(`❌ Falló modelo ${model}: ${fallbackError.message}`);
                     }
                 }
             }
             
             if (attempt > maxRetries) {
-                throw new Error("Todos los intentos fallaron (Groq y OpenRouter completo).");
+                return { 
+                    role: 'assistant', 
+                    content: "Lo siento, mis procesadores están saturados por el límite de peticiones gratuitas. Por favor, espera un minuto e intenta de nuevo." 
+                };
             }
         }
     }
