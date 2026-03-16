@@ -62,6 +62,16 @@ bot.command('start', (ctx) => {
     ctx.reply("Hola, soy OpenGravity. Tu agente personal de Inteligencia Artificial. ¿En qué te puedo ayudar hoy?");
 });
 
+bot.command('clear', async (ctx) => {
+    const userId = ctx.from?.id;
+    if (userId) {
+        import('../agent/memory.js').then(({ memory }) => {
+            memory.clearHistory(userId);
+        });
+        await ctx.reply("🧹 Memoria borrada. ¡Empecemos de cero!");
+    }
+});
+
 // Manejador de Mensajes de Texto
 bot.on('message:text', async (ctx) => {
     const userId = ctx.from.id;

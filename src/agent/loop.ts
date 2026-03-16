@@ -56,7 +56,7 @@ export async function processUserMessage(userId: number, text: string): Promise<
         while (iterations < MAX_ITERATIONS) {
             iterations++;
 
-            const history = memory.getHistory(userId);
+            const history = memory.getHistory(userId, 10); // Cargamos solo los últimos 10 mensajes
             
             const messages: any[] = [
                 { role: 'system', content: SYSTEM_PROMPT },
