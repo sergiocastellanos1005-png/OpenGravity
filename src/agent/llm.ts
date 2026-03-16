@@ -24,10 +24,17 @@ export async function chatCompletion(messages: any[]) {
         });
     };
 
-    const runWithOpenRouter = async () => {
+    const fallbackModels = [
+        env.OPENROUTER_MODEL, // Primera opción (desde .env o render)
+        "google/gemini-2.0-flash-lite-preview-02-05:free", // Respaldo 1
+        "meta-llama/llama-3.3-70b-instruct:free", // Respaldo 2
+    ];
+
+    const runWithOpenRouter = async (modelId: string) => {
         if (!openRouter) throw new Error("OpenRouter no está configurado.");
+        console.log(`🔄 Probando OpenRouter con modelo: ${modelId}`);
         return await openRouter.chat.completions.create({
-            model: env.OPENROUTER_MODEL,
+            model: modelId,
             // @ts-ignore
             messages: messages,
             tools: tools as any
@@ -44,25 +51,26 @@ export async function chatCompletion(messages: any[]) {
             
             if (isRateLimit && attempt <= maxRetries) {
                 console.warn(`⚠️ Limite de Groq alcanzado (Intento ${attempt}/${maxRetries}). Esperando...`);
-                await new Promise(r => setTimeout(r, 2000 * attempt)); // Espera exponencial
+                await new Promise(r => setTimeout(r, 2000 * attempt));
                 continue;
             }
 
-            console.error(`❌ Error con Groq, probando OpenRouter fallback... ${error.message}`);
-            try {
-                if (openRouter) {
-                    const fallbackResponse = await runWithOpenRouter();
-                    return fallbackResponse.choices[0].message;
-                } else {
-                     throw new Error("OpenRouter no está configurado para el fallback.");
+            console.error(`❌ Error con Groq: ${error.message}. Probando fallback en OpenRouter...`);
+            
+            if (openRouter) {
+                for (const model of fallbackModels) {
+                    try {
+                        const fallbackResponse = await runWithOpenRouter(model);
+                        return fallbackResponse.choices[0].message;
+                    } catch (fallbackError: any) {
+                        console.error(`❌ Falló modelo ${model} en OpenRouter: ${fallbackError.message}`);
+                        // Si falla, intentamos el siguiente en la lista
+                    }
                 }
-            } catch (fallbackError: any) {
-                console.error("❌ Error en Fallback (OpenRouter):", fallbackError.message);
-                
-                // Si ambos fallan y es el último intento, lanzamos error
-                if (attempt > maxRetries) {
-                    throw new Error("Ambos modelos (Groq y OpenRouter) fallaron.");
-                }
+            }
+            
+            if (attempt > maxRetries) {
+                throw new Error("Todos los intentos fallaron (Groq y OpenRouter completo).");
             }
         }
     }
