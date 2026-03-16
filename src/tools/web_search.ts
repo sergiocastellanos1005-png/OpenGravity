@@ -21,9 +21,9 @@ export const webSearchTool = {
 };
 
 export async function handleWebSearch(query: string) {
-    console.log(`Buscando en la web: ${query}`);
+    console.log(`Buscando en la web (Yahoo Search): ${query}`);
     try {
-        const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+        const url = `https://es.search.yahoo.com/search?p=${encodeURIComponent(query)}`;
         const { data } = await axios.get(url, { 
             headers: { 
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
@@ -34,10 +34,10 @@ export async function handleWebSearch(query: string) {
         const $ = cheerio.load(data);
         const searchResults: any[] = [];
         
-        $('.result__body').each((i, el) => {
-            const title = $(el).find('.result__title').text().trim();
-            const snippet = $(el).find('.result__snippet').text().trim();
-            if (title && snippet) {
+        $('.compTitle, .algo-sr').each((i, el) => {
+            const title = $(el).find('.title a, h3').text().trim();
+            const snippet = $(el).find('.compText, .fz-ms').text().trim();
+            if (title && snippet && snippet.length > 5) {
                 searchResults.push({ title, snippet });
             }
         });
