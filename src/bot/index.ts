@@ -74,7 +74,7 @@ bot.on('message:text', async (ctx) => {
         await handleResponse(ctx, response);
     } catch (error: any) {
         console.error("Error procesando mensaje:", error);
-        await ctx.reply("Ocurrió un error inesperado al procesar tu solicitud.");
+        await ctx.reply("Lo siento, mis procesadores están un poco saturados. Por favor, espera 30 segundos e intenta de nuevo.");
     }
 });
 
@@ -96,7 +96,7 @@ bot.on('message:voice', async (ctx) => {
         await handleResponse(ctx, response);
     } catch (error: any) {
         console.error("Error procesando audio:", error);
-        await ctx.reply("❌ No pude transcribir el audio. Intenta de nuevo.");
+        await ctx.reply("No pude procesar tu audio esta vez (posible saturación del sistema). ¿Podrías intentar enviarlo de nuevo o escribirlo?");
     }
 });
 

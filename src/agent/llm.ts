@@ -14,9 +14,15 @@ export async function chatCompletion(messages: any[]) {
     const maxRetries = 2;
     let attempt = 0;
 
-    const runWithGroq = async () => {
+    const groqModels = [
+        "llama-3.3-70b-versatile",
+        "mixtral-8x7b-32768",
+        "llama-3.1-8b-instant"
+    ];
+
+    const runWithGroq = async (model: string) => {
         return await groq.chat.completions.create({
-            model: "llama-3.3-70b-versatile",
+            model: model,
             // @ts-ignore
             messages: messages,
             tools: tools as any,
@@ -25,9 +31,9 @@ export async function chatCompletion(messages: any[]) {
     };
 
     const fallbackModels = [
-        env.OPENROUTER_MODEL, // Primera opción (desde .env o render)
-        "google/gemini-2.0-flash-lite-preview-02-05:free", // Respaldo 1
-        "meta-llama/llama-3.3-70b-instruct:free", // Respaldo 2
+        env.OPENROUTER_MODEL, 
+        "google/gemini-2.0-flash-lite-preview-02-05:free", 
+        "meta-llama/llama-3.3-70b-instruct:free",
     ];
 
     const runWithOpenRouter = async (modelId: string) => {
@@ -43,20 +49,30 @@ export async function chatCompletion(messages: any[]) {
 
     while (attempt <= maxRetries) {
         try {
-            const response = await runWithGroq();
-            return response.choices[0].message;
+            // Intentar con los modelos de Groq primero
+            for (const model of groqModels) {
+                try {
+                    const response = await runWithGroq(model);
+                    return response.choices[0].message;
+                } catch (e: any) {
+                    if (e.status === 429) throw e; // Si es rate limit, salir al catch principal para esperar
+                    console.warn(`⚠️ Groq ${model} falló, probando siguiente...`);
+                }
+            }
+            throw new Error("Todos los modelos de Groq fallaron.");
+
         } catch (error: any) {
             attempt++;
             const isRateLimit = error.status === 429 || (error.error && error.error.code === 429) || (error.message && error.message.includes("429"));
             
             if (isRateLimit && attempt <= maxRetries) {
-                const waitTime = 4000 * attempt;
+                const waitTime = 5000 * attempt;
                 console.warn(`⚠️ Límite de Groq (429). Esperando ${waitTime/1000}s...`);
                 await new Promise(r => setTimeout(r, waitTime));
                 continue;
             }
 
-            console.error(`❌ Error Groq: ${error.message}. Entrando a Rescate (OpenRouter)...`);
+            console.error(`❌ Falló Groq completamente. Entrando a Rescate (OpenRouter)...`);
             
             if (openRouter) {
                 for (const model of fallbackModels) {
