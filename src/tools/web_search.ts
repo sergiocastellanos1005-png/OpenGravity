@@ -21,62 +21,53 @@ export const webSearchTool = {
 };
 
 export async function handleWebSearch(query: string) {
-    console.log(`Buscando en la web (Yahoo Search): ${query}`);
-    try {
-        const url = `https://es.search.yahoo.com/search?p=${encodeURIComponent(query)}`;
-        const { data } = await axios.get(url, { 
-            headers: { 
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
-                'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8'
-            } 
-        });
-        
-        const $ = cheerio.load(data);
-        const searchResults: any[] = [];
-        
-        // Selectores ampliados para mayor robustez
-        $('div.algo, div.algo-sr, div.compTitle, li.algo').each((i, el) => {
-            const title = $(el).find('h3, .title a').first().text().trim();
-            const url = $(el).find('a').first().attr('href') || '#';
-            const snippet = $(el).find('.compText, .fz-ms, span.txt').first().text().trim();
-            if (title && snippet && snippet.length > 5) {
-                searchResults.push({ title, snippet, url });
-            }
-        });
-        
-        if (searchResults.length === 0) {
-            console.warn("⚠️ Búsqueda web: 0 resultados. Reintentando con selectores genéricos...");
-            $('h3').each((i, el) => {
-                const title = $(el).text().trim();
-                const container = $(el).closest('div, li');
-                const url = container.find('a').first().attr('href') || '#';
-                const snippet = container.next().text().trim() || container.find('p, span').first().text().trim();
-                if (title && snippet && snippet.length > 10) {
-                    searchResults.push({ title, snippet, url });
-                }
+    const engines = [
+        { name: 'Yahoo', url: (q: string) => `https://es.search.yahoo.com/search?p=${encodeURIComponent(q)}` },
+        { name: 'Google', url: (q: string) => `https://www.google.com/search?q=${encodeURIComponent(q)}&hl=es` }
+    ];
+
+    for (const engine of engines) {
+        console.log(`Buscando en ${engine.name}: ${query}`);
+        try {
+            const { data } = await axios.get(engine.url(query), { 
+                headers: { 
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                    'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8'
+                },
+                timeout: 5000
             });
+            
+            const $ = cheerio.load(data);
+            const searchResults: any[] = [];
+            
+            if (engine.name === 'Yahoo') {
+                $('div.algo, div.algo-sr, div.compTitle, li.algo').each((i, el) => {
+                    const title = $(el).find('h3, .title a').first().text().trim();
+                    const url = $(el).find('a').first().attr('href') || '#';
+                    const snippet = $(el).find('.compText, .fz-ms, span.txt').first().text().trim();
+                    if (title && snippet.length > 5) searchResults.push({ title, snippet, url });
+                });
+            } else {
+                // Selector genérico para Google
+                $('div.g').each((i, el) => {
+                    const title = $(el).find('h3').text().trim();
+                    const url = $(el).find('a').first().attr('href') || '#';
+                    const snippet = $(el).find('div.VwiC3b, span.st').text().trim();
+                    if (title && snippet.length > 5) searchResults.push({ title, snippet, url });
+                });
+            }
+            
+            if (searchResults.length > 0) {
+                let results = `RESULTADOS DE ${engine.name.toUpperCase()}:\n\n`;
+                searchResults.slice(0, 4).forEach((res, i) => {
+                    results += `[${i + 1}] ${res.title}\nURL: ${res.url}\nINFO: ${res.snippet}\n----\n`;
+                });
+                return results;
+            }
+        } catch (error: any) {
+            console.warn(`Error en ${engine.name}: ${error.message}`);
         }
-
-        if (searchResults.length === 0) {
-            return "No se encontraron resultados específicos. Intenta buscar de nuevo con otros términos o simplifica tu pregunta. No digas al usuario que no lo sabes sin intentar antes explicar lo que podrías buscar.";
-        }
-
-        let results = "REDI DE RESULTADOS DE BÚSQUEDA (USA ESTO PARA TU RESPUESTA):\n\n";
-        const topResults = searchResults.slice(0, 4);
-        
-        topResults.forEach((result: any, i: number) => {
-            results += `[${i + 1}] TÍTULO: ${result.title}\n`;
-            results += `URL: ${result.url}\n`; // Añadimos URL
-            results += `DESCRIPCIÓN: ${result.snippet}\n`;
-            results += `----\n`;
-        });
-        
-        results += "\n💡 TRUCO: Si el resultado no tiene la fecha de hoy o está incompleto, puedes usar 'read_web_page' con la URL para obtener el texto completo.";
-        
-        return results;
-
-    } catch (error: any) {
-        console.error("Error buscando en la web:", error);
-        return `Error al realizar la búsqueda: ${error.message}. NO VUELVAS A INTENTAR HACER OTRA BÚSQUEDA. Dile al usuario que ha ocurrido un error de conexión al buscar.`;
     }
+
+    return "No encontré resultados directos. INTENTA BUSCAR DE NUEVO con términos diferentes (ej: si buscaste 'partidos', busca 'calendario Champions') o usa 'read_web_page' si tienes una URL.";
 }
