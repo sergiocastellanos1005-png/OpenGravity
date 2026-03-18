@@ -12,7 +12,16 @@ db.exec(`
         role TEXT NOT NULL CHECK(role IN ('system', 'user', 'assistant', 'tool')),
         content TEXT NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
+    );
+
+    CREATE TABLE IF NOT EXISTS reminders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        text TEXT NOT NULL,
+        remind_at DATETIME NOT NULL,
+        is_sent INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
 `);
 
 export interface Message {
@@ -83,5 +92,24 @@ export const memory = {
                 })
                 .catch((err: any) => console.error('⚠️ Error limpiando Firestore:', err));
         }
+    },
+
+    // ─── RECORDATORIOS (NUEVO) ───
+    addReminder: (userId: number, text: string, remindAtStr: string) => {
+        const stmt = db.prepare('INSERT INTO reminders (user_id, text, remind_at) VALUES (?, ?, ?)');
+        return stmt.run(userId, text, remindAtStr).lastInsertRowid;
+    },
+
+    getPendingReminders: () => {
+        const stmt = db.prepare(`
+            SELECT * FROM reminders 
+            WHERE is_sent = 0 AND remind_at <= datetime('now', 'localtime')
+        `);
+        return stmt.all() as any[];
+    },
+
+    markReminderAsSent: (id: number) => {
+        const stmt = db.prepare('UPDATE reminders SET is_sent = 1 WHERE id = ?');
+        stmt.run(id);
     }
 };

@@ -111,23 +111,43 @@ bot.on('message:voice', async (ctx) => {
 
 // Manejador de Archivos de Audio (MP3, etc.)
 bot.on('message:audio', async (ctx) => {
+    // ... Código existente del audio ...
     const userId = ctx.from.id;
-
     await ctx.replyWithChatAction('typing');
-
     try {
         const file = await ctx.getFile();
         const fileUrl = `https://api.telegram.org/file/bot${env.TELEGRAM_BOT_TOKEN}/${file.file_path}`;
-
         const transcription = await transcribeAudio(fileUrl);
-        console.log(`🎵 Transcripción audio [${userId}]: ${transcription}`);
-
-        await ctx.replyWithChatAction('typing');
         const response = await processUserMessage(userId, `[Archivo de audio]: ${transcription}`);
         await handleResponse(ctx, response);
     } catch (error: any) {
-        console.error("Error procesando archivo de audio:", error);
-        await ctx.reply("❌ No pude transcribir el archivo de audio. Intenta de nuevo.");
+        console.error("Error audio:", error);
+        await ctx.reply("❌ No pude transcribir el audio.");
+    }
+});
+
+// NUEVO: Manejador de Fotos (VISIÓN AI)
+bot.on('message:photo', async (ctx) => {
+    const userId = ctx.from.id;
+    const caption = ctx.message.caption || "";
+    
+    await ctx.replyWithChatAction('typing');
+
+    try {
+        const photos = ctx.message.photo;
+        const bestPhoto = photos[photos.length - 1]; // La de mayor calidad
+        const file = await ctx.api.getFile(bestPhoto.file_id);
+        const imageUrl = `https://api.telegram.org/file/bot${env.TELEGRAM_BOT_TOKEN}/${file.file_path}`;
+
+        console.log(`👁️ Visión AI [${userId}]: Imagen recibida. Caption: ${caption}`);
+
+        // Enviamos al agente una instrucción que contenga la URL de la imagen encapsulada
+        const visionText = `[IMAGEN_URL:${imageUrl}] ${caption || "Analiza esta imagen."}`;
+        const response = await processUserMessage(userId, visionText);
+        await handleResponse(ctx, response);
+    } catch (error: any) {
+        console.error("Error Visión AI:", error.message);
+        await ctx.reply("❌ No pude procesar la imagen. Intenta de nuevo.");
     }
 });
 

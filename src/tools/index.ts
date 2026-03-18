@@ -4,6 +4,8 @@ import { developerTools, handleDeveloperTool } from './developer.js';
 import { memoryTools, handleMemoryTool } from './memory_tool.js';
 import { webSearchTool, handleWebSearch } from './web_search.js';
 import { webTools, handleReadWebPage } from './read_web_page.js';
+import { financeTools, handleFinancialData } from './finance.js';
+import { reminderTools, handleSetReminder } from './reminders.js';
 
 export const tools = [
     getCurrentTimeTool,
@@ -11,7 +13,9 @@ export const tools = [
     ...developerTools,
     ...memoryTools,
     webSearchTool,
-    ...webTools
+    ...webTools,
+    ...financeTools,
+    ...reminderTools
 ];
 
 export async function executeTool(name: string, userId: number, args: any): Promise<any> {
@@ -37,6 +41,10 @@ export async function executeTool(name: string, userId: number, args: any): Prom
             return await handleDeveloperTool(name, args);
         case 'clear_conversation_history':
             return await handleMemoryTool(userId, name, args);
+        case 'get_financial_data':
+            return await handleFinancialData(args.symbol);
+        case 'set_reminder':
+            return await handleSetReminder(userId, args.text, args.datetime);
         default:
             throw new Error(`Herramienta desconocida: ${name}`);
     }

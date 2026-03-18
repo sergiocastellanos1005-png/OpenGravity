@@ -23,12 +23,12 @@ export async function chatCompletion(messages: any[]) {
 
     // Lista ampliada de rescate: Probamos modelos gratis y muy baratos de OpenRouter
     const fallbackModels = [
+        "google/gemini-2.0-flash-001", // Potente para visión y herramientas
         env.OPENROUTER_MODEL, 
         "google/gemini-2.0-flash-lite-preview-02-05:free", 
+        "meta-llama/llama-3.2-11b-vision-instruct:free", // Respaldo de visión gratis
         "meta-llama/llama-3.3-70b-instruct:free",
-        "mistralai/mistral-7b-instruct:free",
-        "google/gemini-2.0-pro-exp-02-05:free",
-        "deepseek/deepseek-chat" // Muy barato si los gratis fallan
+        "mistralai/mistral-7b-instruct:free"
     ].filter(Boolean);
 
     // --- FASE 1: INTENTAR CON GROQ ---

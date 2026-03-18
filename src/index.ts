@@ -13,6 +13,22 @@ async function main() {
     
     console.log(`Servidor HTTP activo en puerto: ${port}`);
 
+    // Iniciar el vigilante de recordatorios en segundo plano
+    setInterval(async () => {
+        try {
+            const { memory } = await import('./agent/memory.js');
+            const pending = memory.getPendingReminders();
+            
+            for (const r of pending) {
+                console.log(`⏰ Enviando recordatorio a ${r.user_id}: ${r.text}`);
+                await bot.api.sendMessage(r.user_id, `⏰ **RECORDATORIO:**\n\n"${r.text}"\n\n(Programado para: ${r.remind_at})`, { parse_mode: 'Markdown' });
+                memory.markReminderAsSent(r.id);
+            }
+        } catch (err: any) {
+            console.error("Error en el bucle de recordatorios:", err.message);
+        }
+    }, 30000); // Cada 30 segundos
+
     // Iniciar servidor de polling de telegram
     bot.start({
         onStart: (botInfo) => {

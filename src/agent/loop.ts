@@ -10,34 +10,33 @@ function parseMessageForLLM(msg: Message) {
     if (msg.role === 'assistant' || msg.role === 'tool') {
         try {
             const parsed = JSON.parse(msg.content);
-            
-            // Caso 1: Asistente con llamadas a herramientas
             if (msg.role === 'assistant' && parsed.tool_calls) {
-                return { 
-                    role: 'assistant', 
-                    content: null, // Groq requiere content: null si hay tool_calls
-                    tool_calls: parsed.tool_calls 
-                };
+                return { role: 'assistant', content: null, tool_calls: parsed.tool_calls };
             }
-            
-            // Caso 2: Respuesta de herramienta
             if (msg.role === 'tool' && parsed.tool_call_id) {
-                return { 
-                    role: 'tool', 
-                    content: parsed.content, 
-                    name: parsed.name, 
-                    tool_call_id: parsed.tool_call_id 
-                };
+                return { role: 'tool', content: parsed.content, name: parsed.name, tool_call_id: parsed.tool_call_id };
             }
-        } catch (e) {
-            // No es JSON, continuamos para ver si es un mensaje de texto normal
-        }
+        } catch (e) {}
     }
     
-    // IMPORTANTE: Filtrar cualquier mensaje de rol 'tool' que no haya pasado el filtro anterior
-    if (msg.role === 'tool') return null;
+    // VISIÓN: Si el mensaje de usuario contiene una URL de imagen especial
+    if (msg.role === 'user' && msg.content.includes('[IMAGEN_URL:')) {
+        const urlMatch = msg.content.match(/\[IMAGEN_URL:(.*?)\]/);
+        const url = urlMatch ? urlMatch[1] : null;
+        const cleanContent = msg.content.replace(/\[IMAGEN_URL:.*?\]/, "").trim();
+        
+        if (url) {
+            return {
+                role: 'user',
+                content: [
+                    { type: 'text', text: cleanContent || "Analiza esta imagen." },
+                    { type: 'image_url', image_url: { url: url } }
+                ]
+            };
+        }
+    }
 
-    // Mensajes normales de usuario o asistente (texto)
+    if (msg.role === 'tool') return null;
     return { role: msg.role, content: msg.content };
 }
 
