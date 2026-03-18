@@ -3,13 +3,15 @@ import { getCurrentTimeTool, getCurrentTime } from './get_current_time.js';
 import { developerTools, handleDeveloperTool } from './developer.js';
 import { memoryTools, handleMemoryTool } from './memory_tool.js';
 import { webSearchTool, handleWebSearch } from './web_search.js';
+import { webTools, handleReadWebPage } from './read_web_page.js';
 
 export const tools = [
     getCurrentTimeTool,
     // ...googleWorkspaceTools, // Desactivado temporalmente
     ...developerTools,
     ...memoryTools,
-    webSearchTool
+    webSearchTool,
+    ...webTools
 ];
 
 export async function executeTool(name: string, userId: number, args: any): Promise<any> {
@@ -18,6 +20,8 @@ export async function executeTool(name: string, userId: number, args: any): Prom
             return await getCurrentTime();
         case 'web_search':
             return await handleWebSearch(args.query);
+        case 'read_web_page':
+            return await handleReadWebPage(args.url);
         /*
         case 'gmail_search':
         case 'gmail_send':

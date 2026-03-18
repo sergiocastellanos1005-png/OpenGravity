@@ -37,9 +37,10 @@ export async function handleWebSearch(query: string) {
         // Selectores ampliados para mayor robustez
         $('div.algo, div.algo-sr, div.compTitle, li.algo').each((i, el) => {
             const title = $(el).find('h3, .title a').first().text().trim();
+            const url = $(el).find('a').first().attr('href') || '#';
             const snippet = $(el).find('.compText, .fz-ms, span.txt').first().text().trim();
             if (title && snippet && snippet.length > 5) {
-                searchResults.push({ title, snippet });
+                searchResults.push({ title, snippet, url });
             }
         });
         
@@ -48,9 +49,10 @@ export async function handleWebSearch(query: string) {
             $('h3').each((i, el) => {
                 const title = $(el).text().trim();
                 const container = $(el).closest('div, li');
+                const url = container.find('a').first().attr('href') || '#';
                 const snippet = container.next().text().trim() || container.find('p, span').first().text().trim();
                 if (title && snippet && snippet.length > 10) {
-                    searchResults.push({ title, snippet });
+                    searchResults.push({ title, snippet, url });
                 }
             });
         }
@@ -64,9 +66,12 @@ export async function handleWebSearch(query: string) {
         
         topResults.forEach((result: any, i: number) => {
             results += `[${i + 1}] TÍTULO: ${result.title}\n`;
+            results += `URL: ${result.url}\n`; // Añadimos URL
             results += `DESCRIPCIÓN: ${result.snippet}\n`;
             results += `----\n`;
         });
+        
+        results += "\n💡 TRUCO: Si el resultado no tiene la fecha de hoy o está incompleto, puedes usar 'read_web_page' con la URL para obtener el texto completo.";
         
         return results;
 

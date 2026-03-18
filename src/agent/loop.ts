@@ -58,8 +58,11 @@ export async function processUserMessage(userId: number, text: string): Promise<
 
             const history = memory.getHistory(userId, 15); // Aumentamos a 15 mensajes para mejor contexto
             
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            
             const messages: any[] = [
-                { role: 'system', content: SYSTEM_PROMPT },
+                { role: 'system', content: `${SYSTEM_PROMPT}\n\nFECHA Y HORA ACTUAL: ${dateStr}` },
                 ...history.map(parseMessageForLLM).filter(Boolean)
             ];
 
