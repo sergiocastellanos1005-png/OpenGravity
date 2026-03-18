@@ -67,7 +67,8 @@ export async function chatCompletion(messages: any[]) {
                     model: modelId,
                     // @ts-ignore
                     messages: messages,
-                    tools: tools as any
+                    tools: tools as any,
+                    tool_choice: "auto"
                 });
                 if (fallbackResponse.choices && fallbackResponse.choices[0]) {
                     console.log(`✅ Rescate exitoso con: ${modelId}`);

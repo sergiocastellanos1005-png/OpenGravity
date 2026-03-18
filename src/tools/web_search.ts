@@ -34,25 +34,37 @@ export async function handleWebSearch(query: string) {
         const $ = cheerio.load(data);
         const searchResults: any[] = [];
         
-        $('.compTitle, .algo-sr').each((i, el) => {
-            const title = $(el).find('.title a, h3').text().trim();
-            const snippet = $(el).find('.compText, .fz-ms').text().trim();
+        // Selectores ampliados para mayor robustez
+        $('div.algo, div.algo-sr, div.compTitle, li.algo').each((i, el) => {
+            const title = $(el).find('h3, .title a').first().text().trim();
+            const snippet = $(el).find('.compText, .fz-ms, span.txt').first().text().trim();
             if (title && snippet && snippet.length > 5) {
                 searchResults.push({ title, snippet });
             }
         });
         
         if (searchResults.length === 0) {
-            return "No se encontraron resultados relevantes en la web. NO VUELVAS A INTENTAR HACER OTRA BÚSQUEDA IGUAL. Informa directamente al usuario de que no tienes esta información.";
+            console.warn("⚠️ Búsqueda web: 0 resultados. Reintentando con selectores genéricos...");
+            $('h3').each((i, el) => {
+                const title = $(el).text().trim();
+                const container = $(el).closest('div, li');
+                const snippet = container.next().text().trim() || container.find('p, span').first().text().trim();
+                if (title && snippet && snippet.length > 10) {
+                    searchResults.push({ title, snippet });
+                }
+            });
         }
 
-        let results = "Resultados de la búsqueda web:\n\n";
-        const topResults = searchResults.slice(0, 5); // Tomamos los 5 primeros
+        if (searchResults.length === 0) {
+            return "No se encontraron resultados específicos. Intenta buscar de nuevo con otros términos o simplifica tu pregunta. No digas al usuario que no lo sabes sin intentar antes explicar lo que podrías buscar.";
+        }
+
+        let results = "REDI DE RESULTADOS DE BÚSQUEDA (USA ESTO PARA TU RESPUESTA):\n\n";
+        const topResults = searchResults.slice(0, 4);
         
         topResults.forEach((result: any, i: number) => {
-            results += `[Resultado ${i + 1}]:\n`;
-            results += `Título: ${result.title}\n`;
-            results += `Descripción: ${result.snippet}\n`;
+            results += `[${i + 1}] TÍTULO: ${result.title}\n`;
+            results += `DESCRIPCIÓN: ${result.snippet}\n`;
             results += `----\n`;
         });
         
