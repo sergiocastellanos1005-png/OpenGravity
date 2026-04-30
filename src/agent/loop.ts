@@ -1,7 +1,7 @@
 import { memory, Message } from './memory.js';
 import { chatCompletion } from './llm.js';
 import { executeTool } from '../tools/index.js';
-import { SYSTEM_PROMPT } from './system.js';
+import { getSystemPrompt } from './system.js';
 
 const MAX_ITERATIONS = 30;
 const userLocks = new Set<number>();
@@ -60,8 +60,11 @@ export async function processUserMessage(userId: number, text: string): Promise<
             const now = new Date();
             const dateStr = now.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
             
+            const userProfile = memory.getProfile(userId);
+            const systemPrompt = getSystemPrompt(userProfile || undefined);
+            
             const messages: any[] = [
-                { role: 'system', content: `${SYSTEM_PROMPT}\n\nFECHA Y HORA ACTUAL: ${dateStr}` },
+                { role: 'system', content: `${systemPrompt}\n\nFECHA Y HORA ACTUAL: ${dateStr}` },
                 ...history.map(parseMessageForLLM).filter(Boolean)
             ];
 

@@ -22,6 +22,12 @@ db.exec(`
         is_sent INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS user_profiles (
+        user_id INTEGER PRIMARY KEY,
+        profile_text TEXT NOT NULL,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
 `);
 
 export interface Message {
@@ -111,5 +117,23 @@ export const memory = {
     markReminderAsSent: (id: number) => {
         const stmt = db.prepare('UPDATE reminders SET is_sent = 1 WHERE id = ?');
         stmt.run(id);
+    },
+
+    // ─── PERFIL DEL USUARIO (NUEVO) ───
+    getProfile: (userId: number): string | null => {
+        const stmt = db.prepare('SELECT profile_text FROM user_profiles WHERE user_id = ?');
+        const row = stmt.get(userId) as any;
+        return row ? row.profile_text : null;
+    },
+
+    updateProfile: (userId: number, profileText: string) => {
+        const stmt = db.prepare(`
+            INSERT INTO user_profiles (user_id, profile_text, updated_at) 
+            VALUES (?, ?, datetime('now'))
+            ON CONFLICT(user_id) DO UPDATE SET 
+                profile_text = excluded.profile_text,
+                updated_at = datetime('now')
+        `);
+        stmt.run(userId, profileText);
     }
 };

@@ -6,6 +6,9 @@ import { webSearchTool, handleWebSearch } from './web_search.js';
 import { webTools, handleReadWebPage } from './read_web_page.js';
 import { financeTools, handleFinancialData } from './finance.js';
 import { reminderTools, handleSetReminder } from './reminders.js';
+import { tasksTools, handleTasks } from './tasks.js';
+import { goalsTools, handleGoals } from './goals.js';
+import { routineTools, handleRoutines } from './routines.js';
 
 export const tools = [
     getCurrentTimeTool,
@@ -15,7 +18,10 @@ export const tools = [
     webSearchTool,
     ...webTools,
     ...financeTools,
-    ...reminderTools
+    ...reminderTools,
+    ...tasksTools,
+    ...goalsTools,
+    ...routineTools
 ];
 
 export async function executeTool(name: string, userId: number, args: any): Promise<any> {
@@ -40,15 +46,21 @@ export async function executeTool(name: string, userId: number, args: any): Prom
         case 'list_directory':
             return await handleDeveloperTool(name, args);
         case 'clear_conversation_history':
+        case 'save_user_preference':
             return await handleMemoryTool(userId, name, args);
         case 'get_financial_data':
             return await handleFinancialData(args.symbol);
         case 'set_reminder':
             return await handleSetReminder(userId, args.text, args.datetime);
+        case 'manage_tasks':
+            return await handleTasks(userId, args);
+        case 'manage_goals':
+            return await handleGoals(userId, args);
+        case 'manage_routines':
+            return await handleRoutines(userId, args);
         default:
             throw new Error(`Herramienta desconocida: ${name}`);
     }
 }
-
 
 

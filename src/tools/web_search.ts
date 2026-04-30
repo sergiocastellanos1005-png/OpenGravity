@@ -22,6 +22,7 @@ export const webSearchTool = {
 
 export async function handleWebSearch(query: string) {
     const engines = [
+        { name: 'DuckDuckGo', url: (q: string) => `https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}` },
         { name: 'Yahoo', url: (q: string) => `https://es.search.yahoo.com/search?p=${encodeURIComponent(q)}` },
         { name: 'Google', url: (q: string) => `https://www.google.com/search?q=${encodeURIComponent(q)}&hl=es` }
     ];
@@ -31,16 +32,24 @@ export async function handleWebSearch(query: string) {
         try {
             const { data } = await axios.get(engine.url(query), { 
                 headers: { 
-                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                    'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8'
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept-Language': 'es-ES,es;q=0.9',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
                 },
-                timeout: 5000
+                timeout: 8000
             });
             
             const $ = cheerio.load(data);
             const searchResults: any[] = [];
             
-            if (engine.name === 'Yahoo') {
+            if (engine.name === 'DuckDuckGo') {
+                $('.result').each((i, el) => {
+                    const title = $(el).find('h2.result__title a').first().text().trim();
+                    const url = $(el).find('h2.result__title a').first().attr('href') || '#';
+                    const snippet = $(el).find('a.result__snippet').first().text().trim();
+                    if (title && snippet) searchResults.push({ title, snippet, url });
+                });
+            } else if (engine.name === 'Yahoo') {
                 $('div.algo, div.algo-sr, div.compTitle, li.algo').each((i, el) => {
                     const title = $(el).find('h3, .title a').first().text().trim();
                     const url = $(el).find('a').first().attr('href') || '#';
@@ -48,7 +57,6 @@ export async function handleWebSearch(query: string) {
                     if (title && snippet.length > 5) searchResults.push({ title, snippet, url });
                 });
             } else {
-                // Selector genérico para Google
                 $('div.g').each((i, el) => {
                     const title = $(el).find('h3').text().trim();
                     const url = $(el).find('a').first().attr('href') || '#';
@@ -59,7 +67,7 @@ export async function handleWebSearch(query: string) {
             
             if (searchResults.length > 0) {
                 let results = `RESULTADOS DE ${engine.name.toUpperCase()}:\n\n`;
-                searchResults.slice(0, 4).forEach((res, i) => {
+                searchResults.slice(0, 5).forEach((res, i) => {
                     results += `[${i + 1}] ${res.title}\nURL: ${res.url}\nINFO: ${res.snippet}\n----\n`;
                 });
                 return results;
