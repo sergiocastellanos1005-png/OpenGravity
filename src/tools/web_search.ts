@@ -22,9 +22,10 @@ export const webSearchTool = {
 
 export async function handleWebSearch(query: string) {
     const engines = [
+        { name: 'SearXNG', url: (q: string) => `https://searx.be/search?q=${encodeURIComponent(q)}&format=json` },
+        { name: 'SearXNG_Backup', url: (q: string) => `https://searx.work/search?q=${encodeURIComponent(q)}&format=json` },
         { name: 'DuckDuckGo', url: (q: string) => `https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}` },
-        { name: 'Yahoo', url: (q: string) => `https://es.search.yahoo.com/search?p=${encodeURIComponent(q)}` },
-        { name: 'Google', url: (q: string) => `https://www.google.com/search?q=${encodeURIComponent(q)}&hl=es` }
+        { name: 'Yahoo', url: (q: string) => `https://es.search.yahoo.com/search?p=${encodeURIComponent(q)}` }
     ];
 
     for (const engine of engines) {
@@ -42,27 +43,30 @@ export async function handleWebSearch(query: string) {
             const $ = cheerio.load(data);
             const searchResults: any[] = [];
             
-            if (engine.name === 'DuckDuckGo') {
-                $('.result').each((i, el) => {
-                    const title = $(el).find('h2.result__title a').first().text().trim();
-                    const url = $(el).find('h2.result__title a').first().attr('href') || '#';
-                    const snippet = $(el).find('a.result__snippet').first().text().trim();
-                    if (title && snippet) searchResults.push({ title, snippet, url });
-                });
-            } else if (engine.name === 'Yahoo') {
-                $('div.algo, div.algo-sr, div.compTitle, li.algo').each((i, el) => {
-                    const title = $(el).find('h3, .title a').first().text().trim();
-                    const url = $(el).find('a').first().attr('href') || '#';
-                    const snippet = $(el).find('.compText, .fz-ms, span.txt').first().text().trim();
-                    if (title && snippet.length > 5) searchResults.push({ title, snippet, url });
-                });
+            if (engine.name.startsWith('SearXNG')) {
+                const results = data.results || [];
+                for (const res of results) {
+                    if (res.title && res.content) {
+                        searchResults.push({ title: res.title, snippet: res.content, url: res.url });
+                    }
+                }
             } else {
-                $('div.g').each((i, el) => {
-                    const title = $(el).find('h3').text().trim();
-                    const url = $(el).find('a').first().attr('href') || '#';
-                    const snippet = $(el).find('div.VwiC3b, span.st').text().trim();
-                    if (title && snippet.length > 5) searchResults.push({ title, snippet, url });
-                });
+                const $ = cheerio.load(data);
+                if (engine.name === 'DuckDuckGo') {
+                    $('.result').each((i, el) => {
+                        const title = $(el).find('h2.result__title a').first().text().trim();
+                        const url = $(el).find('h2.result__title a').first().attr('href') || '#';
+                        const snippet = $(el).find('a.result__snippet').first().text().trim();
+                        if (title && snippet) searchResults.push({ title, snippet, url });
+                    });
+                } else if (engine.name === 'Yahoo') {
+                    $('div.algo, div.algo-sr, div.compTitle, li.algo').each((i, el) => {
+                        const title = $(el).find('h3, .title a').first().text().trim();
+                        const url = $(el).find('a').first().attr('href') || '#';
+                        const snippet = $(el).find('.compText, .fz-ms, span.txt').first().text().trim();
+                        if (title && snippet.length > 5) searchResults.push({ title, snippet, url });
+                    });
+                }
             }
             
             if (searchResults.length > 0) {
