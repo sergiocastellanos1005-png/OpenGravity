@@ -41,7 +41,14 @@ async function handleResponse(ctx: any, response: string) {
     if (isAudio) {
         await sendVoiceResponse(ctx, text);
     } else {
-        await ctx.reply(text);
+        try {
+            // Telegram Markdown usa *texto* para negritas, no **texto**
+            const formattedText = text.replace(/\*\*/g, '*');
+            await ctx.reply(formattedText, { parse_mode: 'Markdown' });
+        } catch (err) {
+            // Fallback si el markdown de Telegram falla por caracteres no escapados
+            await ctx.reply(text);
+        }
     }
 }
 
