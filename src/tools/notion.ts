@@ -49,7 +49,7 @@ export async function handleNotion(userId: number, args: any): Promise<any> {
             return response.results.map((res: any) => ({
                 id: res.id,
                 object: res.object,
-                title: res.title?.[0]?.plain_text || res.properties?.Name?.title?.[0]?.plain_text || 'Sin título',
+                title: res.title?.[0]?.plain_text || res.properties?.title?.title?.[0]?.plain_text || res.properties?.Name?.title?.[0]?.plain_text || 'Sin título',
                 url: res.url
             }));
         }
