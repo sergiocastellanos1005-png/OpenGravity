@@ -16,7 +16,8 @@ export const notionTools = [
                         description: "La acción a realizar." 
                     },
                     query: { type: "string", description: "Término de búsqueda (para 'search')." },
-                    database_id: { type: "string", description: "ID de la base de datos de Notion (requerido para 'add_page')." },
+                    parent_id: { type: "string", description: "ID de la página o base de datos padre (requerido para 'add_page'). Puedes obtenerlo usando la acción 'search'." },
+                    parent_type: { type: "string", enum: ["page", "database"], description: "El tipo de contenedor padre (requerido para 'add_page')." },
                     title: { type: "string", description: "Título de la nueva página o nota (requerido para 'add_page')." },
                     content: { type: "string", description: "Contenido de texto de la nota (opcional para 'add_page')." }
                 },
@@ -32,7 +33,7 @@ export async function handleNotion(userId: number, args: any): Promise<any> {
     }
 
     const notion = new Client({ auth: env.NOTION_API_KEY });
-    const { action, query, database_id, title, content } = args;
+    const { action, query, parent_id, parent_type, title, content } = args;
 
     try {
         if (action === 'search') {
@@ -54,7 +55,9 @@ export async function handleNotion(userId: number, args: any): Promise<any> {
         }
 
         if (action === 'add_page') {
-            if (!database_id || !title) return "Error: Se requiere 'database_id' y 'title' para añadir una página.";
+            if (!parent_id || !title || !parent_type) {
+                return "Error: Se requiere 'parent_id', 'parent_type' y 'title' para añadir una página.";
+            }
             
             const children: any[] = [];
             if (content) {
@@ -67,15 +70,17 @@ export async function handleNotion(userId: number, args: any): Promise<any> {
                 });
             }
 
+            const parentObj = parent_type === 'database' 
+                ? { database_id: parent_id } 
+                : { page_id: parent_id };
+                
+            const propertiesObj = parent_type === 'database' 
+                ? { Name: { title: [{ text: { content: title } }] } }
+                : { title: { title: [{ text: { content: title } }] } };
+
             const response = await notion.pages.create({
-                parent: { database_id },
-                properties: {
-                    Name: { // Asume que la columna principal se llama 'Name' o 'Nombre'
-                        title: [
-                            { text: { content: title } }
-                        ]
-                    }
-                },
+                parent: parentObj as any,
+                properties: propertiesObj,
                 children: children.length > 0 ? children : undefined
             });
 
