@@ -61,13 +61,25 @@ export async function handleNotion(userId: number, args: any): Promise<any> {
             
             const children: any[] = [];
             if (content) {
-                children.push({
-                    object: 'block',
-                    type: 'paragraph',
-                    paragraph: {
-                        rich_text: [{ type: 'text', text: { content } }]
+                const lines = content.split('\n').filter((l: string) => l.trim() !== '');
+                for (const line of lines) {
+                    const text = line.trim();
+                    if (text.startsWith('- ') || text.startsWith('* ')) {
+                        children.push({ object: 'block', type: 'bulleted_list_item', bulleted_list_item: { rich_text: [{ type: 'text', text: { content: text.substring(2) } }] } });
+                    } else if (text.startsWith('[ ] ')) {
+                        children.push({ object: 'block', type: 'to_do', to_do: { checked: false, rich_text: [{ type: 'text', text: { content: text.substring(4) } }] } });
+                    } else if (text.startsWith('[x] ') || text.startsWith('[X] ')) {
+                        children.push({ object: 'block', type: 'to_do', to_do: { checked: true, rich_text: [{ type: 'text', text: { content: text.substring(4) } }] } });
+                    } else if (text.startsWith('### ')) {
+                        children.push({ object: 'block', type: 'heading_3', heading_3: { rich_text: [{ type: 'text', text: { content: text.substring(4) } }] } });
+                    } else if (text.startsWith('## ')) {
+                        children.push({ object: 'block', type: 'heading_2', heading_2: { rich_text: [{ type: 'text', text: { content: text.substring(3) } }] } });
+                    } else if (text.startsWith('# ')) {
+                        children.push({ object: 'block', type: 'heading_1', heading_1: { rich_text: [{ type: 'text', text: { content: text.substring(2) } }] } });
+                    } else {
+                        children.push({ object: 'block', type: 'paragraph', paragraph: { rich_text: [{ type: 'text', text: { content: text } }] } });
                     }
-                });
+                }
             }
 
             const parentObj = parent_type === 'database' 
