@@ -16,7 +16,7 @@ export const notionTools = [
                         description: "La acción a realizar." 
                     },
                     query: { type: "string", description: "Término de búsqueda (para 'search')." },
-                    parent_id: { type: "string", description: "ID de la página o base de datos padre (requerido para 'add_page'). Puedes obtenerlo usando la acción 'search'." },
+                    parent_id: { type: "string", description: "ID de la página padre (requerido para 'add_page'). OBLIGATORIO: Si no tienes el ID, NUNCA se lo pidas al usuario. Usa la acción 'search' para buscar la página por su nombre y obtener el ID tú mismo." },
                     parent_type: { type: "string", enum: ["page", "database"], description: "El tipo de contenedor padre (requerido para 'add_page')." },
                     title: { type: "string", description: "Título de la nueva página o nota (requerido para 'add_page')." },
                     content: { type: "string", description: "Contenido de texto de la nota (opcional para 'add_page')." }
