@@ -79,10 +79,10 @@ export async function handleNotion(userId: number, args: any): Promise<any> {
                 : { title: { title: [{ text: { content: title } }] } };
 
             const response = await notion.pages.create({
-                parent: parentObj as any,
+                parent: parentObj,
                 properties: propertiesObj,
                 children: children.length > 0 ? children : undefined
-            });
+            } as any);
 
             return `✅ Página creada exitosamente en Notion. URL: ${(response as any).url}`;
         }
