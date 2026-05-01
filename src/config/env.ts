@@ -18,4 +18,5 @@ export const env = {
     OPENROUTER_MODEL: getEnv('OPENROUTER_MODEL', false) || 'google/gemini-2.0-flash-lite-preview-02-05:free',
     DB_PATH: getEnv('DB_PATH', false) || './memory.db',
     ELEVENLABS_API_KEY: getEnv('ELEVENLABS_API_KEY', false),
+    NOTION_API_KEY: getEnv('NOTION_API_KEY', false),
 };
