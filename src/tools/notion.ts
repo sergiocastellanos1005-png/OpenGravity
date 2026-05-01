@@ -96,7 +96,7 @@ export async function handleNotion(userId: number, args: any): Promise<any> {
                 children: children.length > 0 ? children : undefined
             } as any);
 
-            return `✅ Página creada exitosamente en Notion. URL: ${(response as any).url}`;
+            return `✅ Página creada exitosamente en Notion. ID: ${(response as any).id} | URL: ${(response as any).url}`;
         }
 
         return "Acción no reconocida.";
