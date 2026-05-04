@@ -158,6 +158,62 @@ bot.on('message:photo', async (ctx) => {
     }
 });
 
+// NUEVO: Manejador de Documentos (Análisis de archivos)
+bot.on('message:document', async (ctx) => {
+    const userId = ctx.from.id;
+    const document = ctx.message.document;
+    const fileName = document.file_name || "archivo_desconocido";
+    const caption = ctx.message.caption || "";
+    
+    await ctx.replyWithChatAction('typing');
+
+    try {
+        const file = await ctx.api.getFile(document.file_id);
+        const fileUrl = `https://api.telegram.org/file/bot${env.TELEGRAM_BOT_TOKEN}/${file.file_path}`;
+
+        console.log(`📄 Documento recibido [${userId}]: ${fileName}. Caption: ${caption}`);
+
+        // Descargar archivo
+        const axios = (await import('axios')).default;
+        const response = await axios.get(fileUrl, { responseType: 'arraybuffer' });
+        const buffer = Buffer.from(response.data);
+
+        let extractedText = "";
+
+        if (fileName.toLowerCase().endsWith('.pdf')) {
+            const pdf = (await import('pdf-parse/lib/pdf-parse.js' as any)).default;
+            const data = await pdf(buffer);
+            extractedText = data.text;
+        } else if (fileName.toLowerCase().endsWith('.docx')) {
+            const mammoth = await import('mammoth');
+            const result = await mammoth.extractRawText({ buffer });
+            extractedText = result.value;
+        } else {
+            // Asumir que es texto plano (txt, md, py, js, etc.)
+            extractedText = buffer.toString('utf-8');
+        }
+
+        if (extractedText.length > 30000) {
+            extractedText = extractedText.substring(0, 30000) + "... [Texto truncado por ser demasiado largo]";
+        }
+
+        const prompt = `[ARCHIVO_RECIBIDO: ${fileName}]
+Contenido del archivo:
+---
+${extractedText}
+---
+${caption || "Analiza el contenido de este archivo."}`;
+
+        await ctx.reply(`🔍 Analizando archivo: *${fileName}*...`, { parse_mode: 'Markdown' });
+        const aiResponse = await processUserMessage(userId, prompt);
+        await handleResponse(ctx, aiResponse);
+
+    } catch (error: any) {
+        console.error("Error procesando documento:", error.message);
+        await ctx.reply(`❌ No pude procesar el archivo "${fileName}". Asegúrate de que sea un formato legible (.txt, .pdf, .docx).`);
+    }
+});
+
 // Manejo de errores globales del bot
 bot.catch((err) => {
     console.error("Error en el bot de Telegram:", err);
