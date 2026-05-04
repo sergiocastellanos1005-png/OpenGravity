@@ -12,7 +12,7 @@ export const reminderTools = [
                     text: { type: 'string', description: 'El texto del recordatorio (ej: "Llamar al médico").' },
                     datetime: { 
                         type: 'string', 
-                        description: 'La fecha y hora en formato YYYY-MM-DD HH:MM:SS (basado en la hora actual proporcionada en el sistema).' 
+                        description: 'La fecha y hora en formato YYYY-MM-DD HH:MM:SS en formato UTC. (IMPORTANTE: El usuario está en Colombia UTC-5, así que si pide algo a las 6:00 PM, debes sumarle 5 horas para guardarlo en UTC).' 
                     }
                 },
                 required: ['text', 'datetime']

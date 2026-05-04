@@ -109,7 +109,7 @@ export const memory = {
     getPendingReminders: () => {
         const stmt = db.prepare(`
             SELECT * FROM reminders 
-            WHERE is_sent = 0 AND remind_at <= datetime('now', 'localtime')
+            WHERE is_sent = 0 AND remind_at <= datetime('now')
         `);
         return stmt.all() as any[];
     },
