@@ -10,6 +10,7 @@ import { tasksTools, handleTasks } from './tasks.js';
 import { goalsTools, handleGoals } from './goals.js';
 import { routineTools, handleRoutines } from './routines.js';
 import { notionTools, handleNotion } from './notion.js';
+import { documentGeneratorTools, handleGenerateDocument } from './document_generator.js';
 
 export const tools = [
     getCurrentTimeTool,
@@ -23,7 +24,8 @@ export const tools = [
     ...tasksTools,
     ...goalsTools,
     ...routineTools,
-    ...notionTools
+    ...notionTools,
+    ...documentGeneratorTools
 ];
 
 export async function executeTool(name: string, userId: number, args: any): Promise<any> {
@@ -62,6 +64,8 @@ export async function executeTool(name: string, userId: number, args: any): Prom
             return await handleRoutines(userId, args);
         case 'manage_notion':
             return await handleNotion(userId, args);
+        case 'generate_document':
+            return await handleGenerateDocument(args);
         default:
             throw new Error(`Herramienta desconocida: ${name}`);
     }

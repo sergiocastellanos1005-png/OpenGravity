@@ -31,6 +31,25 @@ async function sendVoiceResponse(ctx: any, text: string) {
 
 async function handleResponse(ctx: any, response: string) {
     let text = response.trim();
+
+    // NUEVO: Detectar si hay un archivo para enviar generado por las herramientas
+    const fileMatch = text.match(/\[SEND_FILE:(.+?)\]/);
+    if (fileMatch) {
+        const filePath = fileMatch[1];
+        // Limpiamos el tag del texto para que no se vea
+        text = text.replace(/\[SEND_FILE:.+?\]\s*/, '').trim();
+        try {
+            await ctx.replyWithDocument(new InputFile(filePath));
+            // Opcional: borrar el archivo temporal después de enviar
+            setTimeout(() => {
+                try { unlinkSync(filePath); } catch {}
+            }, 5000);
+        } catch (fileErr: any) {
+            console.error("❌ Error enviando archivo:", fileErr.message);
+            await ctx.reply("❌ Hubo un problema al enviarte el archivo generado.");
+        }
+    }
+
     const isAudio = text.toUpperCase().startsWith('[AUDIO]');
     
     // Limpiar etiquetas para que no se muestren/lean
@@ -40,7 +59,7 @@ async function handleResponse(ctx: any, response: string) {
 
     if (isAudio) {
         await sendVoiceResponse(ctx, text);
-    } else {
+    } else if (text.length > 0) {
         try {
             // Telegram Markdown usa *texto* para negritas, no **texto**
             const formattedText = text.replace(/\*\*/g, '*');

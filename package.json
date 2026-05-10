@@ -31,6 +31,8 @@
     "node-fetch": "^3.3.2",
     "mammoth": "^1.6.0",
     "pdf-parse": "^1.1.1",
+    "docx": "^9.1.0",
+    "pdfkit": "^0.15.1",
     "openai": "^6.27.0"
   },
   "devDependencies": {
