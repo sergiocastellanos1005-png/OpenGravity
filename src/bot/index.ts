@@ -201,7 +201,8 @@ bot.on('message:document', async (ctx) => {
 
         if (fileName.toLowerCase().endsWith('.pdf')) {
             try {
-                const pdf = (await import('pdf-parse')).default;
+                // @ts-ignore
+                const pdf = (await import('pdf-parse')).default || await import('pdf-parse');
                 const data = await (pdf as any)(buffer);
                 extractedText = data.text;
             } catch (pdfErr) {
