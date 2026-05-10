@@ -1,5 +1,6 @@
 import { Document, Packer, Paragraph, TextRun } from 'docx';
-import PDFDocument from 'pdfkit';
+// @ts-ignore
+import PDFDocument from 'pdfkit/js/pdfkit.js';
 import { writeFileSync, createWriteStream } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
