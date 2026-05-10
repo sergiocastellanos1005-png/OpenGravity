@@ -29,6 +29,19 @@ async function sendVoiceResponse(ctx: any, text: string) {
     }
 }
 
+function deLaTeX(text: string): string {
+    return text
+        .replace(/\\vec\{(\w+)\}/g, '$1') // \vec{B} -> B
+        .replace(/\\frac\{(.+?)\}\{(.+?)\}/g, '($1 / $2)') // \frac{a}{b} -> (a / b)
+        .replace(/\\times/g, 'x')
+        .replace(/\\mu_0/g, 'μ₀')
+        .replace(/\\pi/g, 'π')
+        .replace(/\\hat\{(\w+)\}/g, '$1^') // \hat{r} -> r^
+        .replace(/\\cdot/g, '·')
+        .replace(/\$/g, '') // Quitar símbolos de dólar
+        .replace(/\\/g, ''); // Quitar cualquier barra invertida suelta
+}
+
 async function handleResponse(ctx: any, response: string) {
     let text = response.trim();
 
@@ -56,6 +69,11 @@ async function handleResponse(ctx: any, response: string) {
     text = text.replace(/^\[AUDIO\]\s*/i, '');
     text = text.replace(/^\[TEXTO\]\s*/i, '');
     text = text.replace(/^\[TEXT\]\s*/i, '');
+
+    // NUEVO: Filtro de seguridad Anti-LaTeX
+    if (text.includes('\\') || text.includes('$')) {
+        text = deLaTeX(text);
+    }
 
     if (isAudio) {
         await sendVoiceResponse(ctx, text);
