@@ -69,12 +69,7 @@ export async function handleGenerateDocument(args: any): Promise<any> {
             await new Promise((resolve) => stream.on('finish', resolve));
         }
 
-        return {
-            status: "success",
-            message: `✅ Documento ${type.toUpperCase()} generado con éxito: ${finalFilename}`,
-            filePath,
-            fileName: finalFilename
-        };
+        return `[SEND_FILE:${filePath}] ✅ Documento ${type.toUpperCase()} generado con éxito: ${finalFilename}. ¡Aquí lo tienes!`;
     } catch (error: any) {
         console.error("Error generando documento:", error);
         return `❌ Error al generar el documento: ${error.message}`;

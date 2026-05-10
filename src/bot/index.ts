@@ -200,8 +200,8 @@ bot.on('message:document', async (ctx) => {
         let extractedText = "";
 
         if (fileName.toLowerCase().endsWith('.pdf')) {
-            const pdf = (await import('pdf-parse/lib/pdf-parse.js' as any)).default;
-            const data = await pdf(buffer);
+            const pdf = (await import('pdf-parse/lib/pdf-parse.js')).default;
+            const data = await (pdf as any)(buffer);
             extractedText = data.text;
         } else if (fileName.toLowerCase().endsWith('.docx')) {
             const mammoth = await import('mammoth');
