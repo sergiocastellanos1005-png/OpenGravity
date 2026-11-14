@@ -11,7 +11,7 @@ function parseMessageForLLM(msg: Message) {
         try {
             const parsed = JSON.parse(msg.content);
             if (msg.role === 'assistant' && parsed.tool_calls) {
-                return { role: 'assistant', content: null, tool_calls: parsed.tool_calls };
+                return { role: 'assistant', content: '', tool_calls: parsed.tool_calls };
             }
             if (msg.role === 'tool' && parsed.tool_call_id) {
                 return { role: 'tool', content: parsed.content, name: parsed.name, tool_call_id: parsed.tool_call_id };
@@ -76,22 +76,35 @@ export async function processUserMessage(userId: number, text: string): Promise<
                 }
 
                 // Compatibilidad: Si el modelo emitió el llamado en texto <function(nombre)={args}></function>
-                if ((!responseMessage.tool_calls || responseMessage.tool_calls.length === 0) && responseMessage.content) {
-                    const textCalls: any[] = [];
+                if (responseMessage.content && responseMessage.content.includes('<function(')) {
                     const funcRegex = /<function\((\w+)\)=(.*?)><\/function>/gs;
                     let match;
+                    let toolResults = "";
                     while ((match = funcRegex.exec(responseMessage.content)) !== null) {
-                        textCalls.push({
-                            id: `call_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-                            type: 'function',
-                            function: {
-                                name: match[1],
-                                arguments: match[2].trim()
-                            }
-                        });
+                        const functionName = match[1];
+                        let functionArgs = {};
+                        try {
+                            functionArgs = JSON.parse(match[2].trim());
+                        } catch {
+                            try {
+                                functionArgs = JSON.parse(match[2].trim().replace(/\n/g, '\\n'));
+                            } catch {}
+                        }
+                        try {
+                            console.log(`🔨 Ejecutando herramienta textual: ${functionName}`, functionArgs);
+                            const res = await executeTool(functionName, userId, functionArgs);
+                            toolResults += `\n[Resultado de ${functionName}]:\n${typeof res === 'string' ? res : JSON.stringify(res)}\n`;
+                        } catch (err: any) {
+                            console.warn(`Error ejecutando ${functionName}:`, err.message);
+                        }
                     }
-                    if (textCalls.length > 0) {
-                        responseMessage.tool_calls = textCalls;
+
+                    if (toolResults) {
+                        messages.push({
+                            role: 'user',
+                            content: `Información obtenida en tiempo real para tu consulta:${toolResults}\nPor favor responde ahora a mi pregunta usando estos datos.`
+                        });
+                        continue;
                     }
                 }
 

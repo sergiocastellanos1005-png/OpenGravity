@@ -87,6 +87,8 @@ async function handleResponse(ctx: any, response: string) {
             // Fallback si el markdown de Telegram falla por caracteres no escapados
             await ctx.reply(text);
         }
+    } else {
+        await ctx.reply("Disculpa, no pude procesar la respuesta adecuadamente. ¿Podrías intentar de nuevo o preguntar de otra forma?");
     }
 }
 
