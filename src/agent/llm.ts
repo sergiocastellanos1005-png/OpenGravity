@@ -3,8 +3,9 @@ import { env } from '../config/env.js';
 import { tools } from '../tools/index.js';
 import OpenAI from 'openai';
 
+// Nota: baseURL NO debe llevar barra al final para evitar el error de doble barra "//chat/completions" -> 404
 const gemini = env.GEMINI_API_KEY ? new OpenAI({
-    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai",
     apiKey: env.GEMINI_API_KEY
 }) : null;
 
@@ -24,21 +25,24 @@ export async function chatCompletion(messages: any[]) {
 
     // --- FASE 1: GOOGLE GEMINI (MOTOR PRINCIPAL: 1,000,000 TPM, VISIÓN Y TOOLS) ---
     if (gemini) {
-        try {
-            console.log("🚀 Intentando Google Gemini (gemini-2.0-flash)...");
-            const response = await gemini.chat.completions.create({
-                model: "gemini-2.0-flash",
-                // @ts-ignore
-                messages: messages,
-                tools: tools as any,
-                tool_choice: "auto",
-            });
-            if (response.choices && response.choices[0]) {
-                console.log("✅ Éxito con Gemini 2.0 Flash");
-                return response.choices[0].message;
+        const geminiModels = ["gemini-2.0-flash", "gemini-1.5-flash"];
+        for (const model of geminiModels) {
+            try {
+                console.log(`🚀 Intentando Google Gemini (${model})...`);
+                const response = await gemini.chat.completions.create({
+                    model: model,
+                    // @ts-ignore
+                    messages: messages,
+                    tools: tools as any,
+                    tool_choice: "auto",
+                });
+                if (response.choices && response.choices[0]) {
+                    console.log(`✅ Éxito con Gemini (${model})`);
+                    return response.choices[0].message;
+                }
+            } catch (error: any) {
+                console.warn(`⚠️ Google Gemini (${model}) falló: ${error.message}`);
             }
-        } catch (error: any) {
-            console.warn(`⚠️ Google Gemini falló: ${error.message}`);
         }
     }
 
@@ -78,8 +82,8 @@ export async function chatCompletion(messages: any[]) {
         const fallbackModels = [
             "google/gemini-2.0-flash-001",
             env.OPENROUTER_MODEL,
-            "meta-llama/llama-3.3-70b-instruct:free",
-            "mistralai/mistral-small-24b-instruct-2501:free"
+            "meta-llama/llama-3.3-70b-instruct",
+            "mistralai/mistral-small-24b-instruct-2501"
         ].filter(Boolean);
 
         for (const modelId of fallbackModels) {
