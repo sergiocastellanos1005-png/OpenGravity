@@ -14,8 +14,7 @@ export const webSearchTool = {
                     description: 'La consulta exacta para buscar en internet.'
                 }
             },
-            required: ['query'],
-            additionalProperties: false
+            required: ['query']
         }
     }
 };

@@ -5,7 +5,12 @@ export const getCurrentTimeTool = {
         description: "Obtener la fecha y hora actual local.",
         parameters: {
             type: "object",
-            properties: {},
+            properties: {
+                timezone: {
+                    type: "string",
+                    description: "Zona horaria opcional (ej: America/Bogota)"
+                }
+            },
             required: [],
         },
     },

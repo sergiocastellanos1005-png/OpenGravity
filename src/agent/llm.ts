@@ -80,10 +80,8 @@ export async function chatCompletion(messages: any[]) {
     // --- FASE 3: OPENROUTER (RESCATE ADICIONAL) ---
     if (openRouter) {
         const fallbackModels = [
-            "google/gemini-2.0-flash-001",
-            env.OPENROUTER_MODEL,
             "meta-llama/llama-3.3-70b-instruct",
-            "mistralai/mistral-small-24b-instruct-2501"
+            env.OPENROUTER_MODEL
         ].filter(Boolean);
 
         for (const modelId of fallbackModels) {
