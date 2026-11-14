@@ -75,6 +75,26 @@ export async function processUserMessage(userId: number, text: string): Promise<
                     return "Lo siento, la IA no me devolvió una respuesta válida.";
                 }
 
+                // Compatibilidad: Si el modelo emitió el llamado en texto <function(nombre)={args}></function>
+                if ((!responseMessage.tool_calls || responseMessage.tool_calls.length === 0) && responseMessage.content) {
+                    const textCalls: any[] = [];
+                    const funcRegex = /<function\((\w+)\)=(.*?)><\/function>/gs;
+                    let match;
+                    while ((match = funcRegex.exec(responseMessage.content)) !== null) {
+                        textCalls.push({
+                            id: `call_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+                            type: 'function',
+                            function: {
+                                name: match[1],
+                                arguments: match[2].trim()
+                            }
+                        });
+                    }
+                    if (textCalls.length > 0) {
+                        responseMessage.tool_calls = textCalls;
+                    }
+                }
+
                 if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
                     const toolNames = responseMessage.tool_calls.map((tc: any) => tc.function.name);
                     for (const name of toolNames) {

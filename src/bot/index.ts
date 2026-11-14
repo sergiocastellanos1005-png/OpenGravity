@@ -69,6 +69,7 @@ async function handleResponse(ctx: any, response: string) {
     text = text.replace(/^\[AUDIO\]\s*/i, '');
     text = text.replace(/^\[TEXTO\]\s*/i, '');
     text = text.replace(/^\[TEXT\]\s*/i, '');
+    text = text.replace(/<function\(.*?\)><\/function>/gs, '').trim();
 
     // NUEVO: Filtro de seguridad Anti-LaTeX
     if (text.includes('\\') || text.includes('$')) {
