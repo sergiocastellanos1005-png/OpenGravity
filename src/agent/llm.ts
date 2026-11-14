@@ -1,68 +1,90 @@
 import Groq from 'groq-sdk';
 import { env } from '../config/env.js';
 import { tools } from '../tools/index.js';
-import { Message } from './memory.js';
 import OpenAI from 'openai';
 
-const groq = new Groq({ apiKey: env.GROQ_API_KEY });
+const gemini = env.GEMINI_API_KEY ? new OpenAI({
+    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+    apiKey: env.GEMINI_API_KEY
+}) : null;
+
+const groq = env.GROQ_API_KEY ? new Groq({ apiKey: env.GROQ_API_KEY }) : null;
+
 const openRouter = env.OPENROUTER_API_KEY ? new OpenAI({
     baseURL: "https://openrouter.ai/api/v1",
     apiKey: env.OPENROUTER_API_KEY,
     defaultHeaders: {
-        "HTTP-Referer": "https://opengravity.io", // Requerido por algunos modelos de OpenRouter
+        "HTTP-Referer": "https://opengravity.io",
         "X-Title": "OpenGravity Bot",
     }
 }) : null;
 
 export async function chatCompletion(messages: any[]) {
-    const groqModels = [
-        "llama-3.3-70b-versatile",
-        "mixtral-8x7b-32768",
-        "llama-3.1-8b-instant"
-    ];
-
-    // Lista ampliada de rescate: Probamos modelos gratis y muy baratos de OpenRouter
-    const fallbackModels = [
-        "google/gemini-2.0-flash-001", // Potente para visión y herramientas
-        env.OPENROUTER_MODEL, 
-        "google/gemini-2.0-flash-lite-preview-02-05:free", 
-        "meta-llama/llama-3.2-11b-vision-instruct:free", // Respaldo de visión gratis
-        "meta-llama/llama-3.3-70b-instruct:free",
-        "mistralai/mistral-7b-instruct:free"
-    ].filter(Boolean);
-
-    // --- FASE 1: INTENTAR CON GROQ ---
     console.log("--- Iniciando ciclo de IA ---");
-    for (const model of groqModels) {
+
+    // --- FASE 1: GOOGLE GEMINI (MOTOR PRINCIPAL: 1,000,000 TPM, VISIÓN Y TOOLS) ---
+    if (gemini) {
         try {
-            console.log(`🚀 Intentando Groq (${model})...`);
-            const response = await groq.chat.completions.create({
-                model: model,
+            console.log("🚀 Intentando Google Gemini (gemini-2.0-flash)...");
+            const response = await gemini.chat.completions.create({
+                model: "gemini-2.0-flash",
                 // @ts-ignore
                 messages: messages,
                 tools: tools as any,
                 tool_choice: "auto",
             });
             if (response.choices && response.choices[0]) {
-                console.log(`✅ Éxito con Groq (${model})`);
+                console.log("✅ Éxito con Gemini 2.0 Flash");
                 return response.choices[0].message;
             }
         } catch (error: any) {
-            const isRateLimit = error.status === 429 || error.message?.includes("429");
-            if (isRateLimit) {
-                console.warn(`⚠️ Groq Rate Limit en ${model}. Saltando al rescate inmediatamente.`);
-                break; // No perdemos tiempo con otros modelos de Groq si hay rate limit global
-            }
-            console.warn(`⚠️ Groq ${model} falló: ${error.message}`);
+            console.warn(`⚠️ Google Gemini falló: ${error.message}`);
         }
     }
 
-    // --- FASE 2: RESCATE TOTAL CON OPENROUTER ---
+    // --- FASE 2: GROQ (RESPALDO ULTRA RÁPIDO) ---
+    if (groq) {
+        const groqModels = [
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant"
+        ];
+        for (const model of groqModels) {
+            try {
+                console.log(`🚀 Intentando Groq (${model})...`);
+                const response = await groq.chat.completions.create({
+                    model: model,
+                    // @ts-ignore
+                    messages: messages,
+                    tools: tools as any,
+                    tool_choice: "auto",
+                });
+                if (response.choices && response.choices[0]) {
+                    console.log(`✅ Éxito con Groq (${model})`);
+                    return response.choices[0].message;
+                }
+            } catch (error: any) {
+                const isRateLimit = error.status === 429 || error.message?.includes("429");
+                if (isRateLimit) {
+                    console.warn(`⚠️ Groq Rate Limit en ${model}. Pasando al siguiente motor.`);
+                    break;
+                }
+                console.warn(`⚠️ Groq ${model} falló: ${error.message}`);
+            }
+        }
+    }
+
+    // --- FASE 3: OPENROUTER (RESCATE ADICIONAL) ---
     if (openRouter) {
-        console.error(`❌ Groq falló o está saturado. Iniciando cascada de rescate en OpenRouter...`);
+        const fallbackModels = [
+            "google/gemini-2.0-flash-001",
+            env.OPENROUTER_MODEL,
+            "meta-llama/llama-3.3-70b-instruct:free",
+            "mistralai/mistral-small-24b-instruct-2501:free"
+        ].filter(Boolean);
+
         for (const modelId of fallbackModels) {
             try {
-                console.log(`🔄 Probando motor de reserva: ${modelId}...`);
+                console.log(`🔄 Probando motor de reserva OpenRouter: ${modelId}...`);
                 const fallbackResponse = await openRouter.chat.completions.create({
                     model: modelId,
                     // @ts-ignore
@@ -71,21 +93,18 @@ export async function chatCompletion(messages: any[]) {
                     tool_choice: "auto"
                 });
                 if (fallbackResponse.choices && fallbackResponse.choices[0]) {
-                    console.log(`✅ Rescate exitoso con: ${modelId}`);
+                    console.log(`✅ Rescate exitoso con OpenRouter: ${modelId}`);
                     return fallbackResponse.choices[0].message;
                 }
             } catch (fallbackError: any) {
-                console.error(`❌ El motor ${modelId} también falló: ${fallbackError.message}`);
-                // Seguimos al siguiente en la lista sin detenernos
+                console.error(`❌ OpenRouter ${modelId} falló: ${fallbackError.message}`);
             }
         }
-    } else {
-        console.error("⚠️ No hay motor de rescate (OpenRouter) configurado en las variables de entorno.");
     }
 
-    // --- FASE 3: MENSAJE DE ÚLTIMO RECURSO ---
-    return { 
-        role: 'assistant', 
-        content: "Lo siento mucho. Todos mis cerebros (Groq y Gemini/OpenRouter) han alcanzado su límite de uso gratuito por este minuto. Por favor, **espera exactamente 60 segundos** e intenta de nuevo. Si esto pasa mucho, revisa tu configuración de OpenRouter." 
+    // --- FASE 4: MENSAJE FINAL SI NINGUNO RESPONDIÓ ---
+    return {
+        role: 'assistant',
+        content: "⚠️ No pude conectar con ningún motor de IA (Gemini / Groq / OpenRouter). Revisa que al menos una clave API (ej. GEMINI_API_KEY o GROQ_API_KEY) esté configurada y activa en las variables de entorno de Render."
     };
 }

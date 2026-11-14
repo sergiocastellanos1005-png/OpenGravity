@@ -5,7 +5,7 @@ import { writeFileSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
-const groq = new Groq({ apiKey: env.GROQ_API_KEY });
+const groq = env.GROQ_API_KEY ? new Groq({ apiKey: env.GROQ_API_KEY }) : null;
 
 /**
  * Descarga un archivo desde una URL y lo guarda temporalmente.
@@ -23,6 +23,9 @@ async function downloadFile(url: string, filePath: string): Promise<void> {
  * @returns El texto transcrito.
  */
 export async function transcribeAudio(fileUrl: string): Promise<string> {
+    if (!groq) {
+        return "[Nota de voz recibida, pero se requiere GROQ_API_KEY para transcribir audios con Whisper]";
+    }
     const tempPath = join(tmpdir(), `og_audio_${Date.now()}.ogg`);
     let attempt = 0;
     const maxRetries = 3;
